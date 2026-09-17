@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amazon Quick Pricing Calculator</title>
+<style>
+  :root {
+    --aws-orange: #ff9900;
+    --aws-dark: #232f3e;
+    --aws-light: #f2f3f3;
+    --aws-blue: #527fff;
+    --border: #d5dbdb;
+    --text: #16191f;
+    --text-muted: #687078;
+    --green: #1a7f37;
+    --red: #d13212;
+    --pro-color: #527fff;
+    --ent-color: #ff9900;
+    --ext-color: #d13212;
+    --card-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--aws-light); color: var(--text); line-height: 1.5;
+  }
+  header { background: var(--aws-dark); color: #fff; padding: 24px 0; text-align: center; }
+  header h1 { font-size: 1.8rem; font-weight: 600; margin-bottom: 4px; }
+  header p { color: #aab7b8; font-size: 0.95rem; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+  /* Reference Cards */
+  .ref-section { margin-bottom: 28px; }
+  .ref-section h2 { font-size: 1.15rem; margin-bottom: 10px; color: var(--aws-dark); }
+  .plans-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .plans-grid { grid-template-columns: 1fr; } }
+  .plan-card {
+    background: #fff; border: 2px solid var(--border);
+    border-radius: var(--radius); padding: 16px; box-shadow: var(--card-shadow);
+  }
+  .plan-card.pro { border-left: 4px solid var(--pro-color); }
+  .plan-card.ent { border-left: 4px solid var(--ent-color); }
+  .plan-card.ext { border-left: 4px solid var(--ext-color); }
+  .plan-card h3 { font-size: 0.95rem; margin-bottom: 2px; }
+  .plan-card .price { font-size: 1.3rem; font-weight: 700; color: var(--aws-dark); }
+  .plan-card .price small { font-size: 0.72rem; font-weight: 400; color: var(--text-muted); }
+  .plan-card .info { margin-top: 6px; font-size: 0.78rem; color: var(--text-muted); }
+  .plan-card .info span { display: block; margin-bottom: 1px; }
+  .tag { display: inline-block; font-size: 0.65rem; padding: 1px 6px; border-radius: 3px; font-weight: 600; vertical-align: middle; margin-left: 4px; }
+  .tag-pro { background: #e8f0fe; color: #1a56db; }
+  .tag-ent { background: #fff4e5; color: #b45309; }
+  .tag-ext { background: #fce8e6; color: #d13212; }
+
+  /* Calculator */
+  .calc-area {
+    background: #fff; border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px; box-shadow: var(--card-shadow);
+  }
+  .budget-row { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .budget-row label { font-weight: 700; font-size: 1rem; white-space: nowrap; }
+  .budget-input {
+    font-size: 1.5rem; font-weight: 700; width: 180px;
+    border: 2px solid var(--aws-orange); border-radius: 6px;
+    padding: 6px 12px; text-align: right; color: var(--aws-dark);
+  }
+  .budget-input:focus { outline: none; box-shadow: 0 0 0 3px rgba(255,153,0,0.2); }
+  .budget-status { font-size: 0.95rem; font-weight: 600; padding: 4px 12px; border-radius: 4px; }
+  .budget-status.under { background: #e6f7ee; color: var(--green); }
+  .budget-status.over  { background: #fce8e6; color: var(--red); }
+  .budget-status.exact { background: #e8f0fe; color: var(--aws-blue); }
+
+  /* Sliders */
+  .sliders { display: flex; flex-direction: column; gap: 18px; }
+  .slider-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .slider-group-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .slider-group, .slider-group-2 { grid-template-columns: 1fr; } }
+
+  .slider-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .slider-label .name { font-size: 0.83rem; font-weight: 600; }
+  .slider-label .val {
+    font-size: 0.95rem; font-weight: 700; color: var(--aws-dark);
+    background: var(--aws-light); padding: 2px 6px; border-radius: 4px;
+    min-width: 55px; text-align: right;
+    border: 1px solid var(--border); width: 70px;
+    -moz-appearance: textfield;
+  }
+  .slider-label .val::-webkit-inner-spin-button,
+  .slider-label .val::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .slider-label .val:focus { outline: none; border-color: var(--aws-blue); box-shadow: 0 0 0 2px rgba(82,127,255,0.15); }
+  .slider-hint { font-size: 0.73rem; color: var(--text-muted); margin-bottom: 2px; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 6px; border-radius: 3px;
+    background: var(--border); outline: none; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--aws-orange); cursor: grab; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--aws-orange); cursor: grab; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+  input[type="range"].pro-slider::-webkit-slider-thumb { background: var(--pro-color); }
+  input[type="range"].pro-slider::-moz-range-thumb { background: var(--pro-color); }
+  input[type="range"].ent-slider::-webkit-slider-thumb { background: var(--ent-color); }
+  input[type="range"].ent-slider::-moz-range-thumb { background: var(--ent-color); }
+  input[type="range"].ext-slider::-webkit-slider-thumb { background: var(--ext-color); }
+  input[type="range"].ext-slider::-moz-range-thumb { background: var(--ext-color); }
+
+  .total-seats { text-align: center; margin-top: 4px; font-size: 0.85rem; color: var(--text-muted); }
+  .total-seats strong { color: var(--aws-dark); font-size: 1rem; }
+
+  /* Bar */
+  .bar-container { margin-top: 16px; background: var(--aws-light); border-radius: 6px; height: 28px; overflow: hidden; }
+  .bar-fill {
+    height: 100%; border-radius: 6px; transition: width 0.3s, background 0.3s;
+    display: flex; align-items: center; justify-content: flex-end; padding-right: 8px;
+    font-size: 0.75rem; font-weight: 700; color: #fff; min-width: 40px;
+  }
+  .bar-fill.under { background: var(--green); }
+  .bar-fill.over  { background: var(--red); }
+  .bar-fill.exact { background: var(--aws-blue); }
+  .bar-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+  /* Breakdown */
+  .breakdown { margin-top: 24px; }
+  .breakdown h3 { font-size: 1.05rem; margin-bottom: 10px; color: var(--aws-dark); }
+  .breakdown table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  .breakdown th, .breakdown td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+  .breakdown th { background: var(--aws-light); font-weight: 600; }
+  .breakdown .r { text-align: right; }
+  .breakdown .total td { font-weight: 700; font-size: 1rem; border-top: 2px solid var(--aws-dark); padding-top: 10px; }
+
+  .pro-label { color: var(--pro-color); font-weight: 600; }
+  .ent-label { color: var(--ent-color); font-weight: 600; }
+  .ext-label { color: var(--ext-color); font-weight: 600; }
+
+  .note { font-size: 0.78rem; color: var(--text-muted); margin-top: 12px; line-height: 1.4; }
+  footer { text-align: center; padding: 24px; font-size: 0.78rem; color: var(--text-muted); }
+  footer a { color: var(--aws-blue); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Amazon Quick Pricing Calculator</h1>
+  <p>Set your budget, drag sliders to mix Pro, Enterprise, and Enterprise + Extra Agent Hours seats</p>
+</header>
+
+<div class="container">
+
+  <!-- Reference Cards -->
+  <section class="ref-section">
+    <h2>📋 Plan Reference</h2>
+    <div class="plans-grid">
+      <div class="plan-card pro">
+        <h3>Professional <span class="tag tag-pro">Pro</span></h3>
+        <div class="price">$20 <small>/user/mo</small></div>
+        <div class="info">
+          <span>⏱ 8 agent hrs / user / mo</span>
+          <span>💾 25 GB storage / user</span>
+          <span>🏗 +$250 infra / account / mo</span>
+          <span>🚫 No agent hour overage</span>
+        </div>
+      </div>
+      <div class="plan-card ent">
+        <h3>Enterprise <span class="tag tag-ent">Ent</span></h3>
+        <div class="price">$40 <small>/user/mo</small></div>
+        <div class="info">
+          <span>⏱ 18 agent hrs / user / mo</span>
+          <span>💾 50 GB storage / user</span>
+          <span>🏗 +$250 infra / account / mo</span>
+          <span>💲 $3/hr overage available</span>
+        </div>
+      </div>
+      <div class="plan-card ext">
+        <h3>Ent + Extra Hours <span class="tag tag-ext">Ent+</span></h3>
+        <div class="price">$40 <small>/user/mo + overage</small></div>
+        <div class="info">
+          <span>⏱ 18 hrs included + extra hrs</span>
+          <span>💾 50 GB storage / user</span>
+          <span>💲 $3/hr for hours over 18</span>
+          <span>🎯 For power users who need more</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Calculator -->
+  <section class="calc-area">
+
+    <div class="budget-row">
+      <label>Monthly Budget: $</label>
+      <input type="number" class="budget-input" id="budget" value="5000" min="0" step="100">
+      <span class="budget-status" id="budgetStatus"></span>
+    </div>
+
+    <!-- Seat sliders: 3 columns -->
+    <div class="sliders">
+      <div class="slider-group">
+        <div class="slider-field">
+          <div class="slider-label">
+            <span class="name"><span class="pro-label">Pro</span> Seats</span>
+            <input type="number" class="val" id="proSeatsVal" value="0" min="0" max="5000">
+          </div>
+          <div class="slider-hint">$20/user · 8 agent hrs · 25 GB</div>
+          <input type="range" class="pro-slider" id="proSeats" min="0" max="5000" value="0">
+        </div>
+        <div class="slider-field">
+          <div class="slider-label">
+            <span class="name"><span class="ent-label">Ent</span> Seats</span>
+            <input type="number" class="val" id="entSeatsVal" value="50" min="0" max="5000">
+          </div>
+          <div class="slider-hint">$40/user · 18 agent hrs · 50 GB</div>
+          <input type="range" class="ent-slider" id="entSeats" min="0" max="5000" value="50">
+        </div>
+        <div class="slider-field">
+          <div class="slider-label">
+            <span class="name"><span class="ext-label">Ent+</span> Seats</span>
+            <input type="number" class="val" id="extSeatsVal" value="0" min="0" max="5000">
+          </div>
+          <div class="slider-hint">$40/user + $3/hr extra agent hrs</div>
+          <input type="range" class="ext-slider" id="extSeats" min="0" max="5000" value="0">
+        </div>
+      </div>
+
+      <div class="total-seats">
+        Total seats: <strong id="totalSeatsVal">50</strong>
+        &nbsp;(<span id="totalEntSeatsLabel">50 Enterprise total</span>)
+      </div>
+
+      <!-- Agent hours: 3 columns -->
+      <div class="slider-group">
+        <div class="slider-field">
+          <div class="slider-label">
+            <span class="name"><span class="pro-label">Pro</span> Avg Hrs/User</span>
+            <input type="number" class="val" id="proAgentVal" value="8" min="0" max="60" step="0.5">
+          </div>
+          <div class="slider-hint" id="proAgentHint">Included: 8 hrs · No overage</div>
+          <input type="range" class="pro-slider" id="proAgentHours" min="0" max="60" value="8" step="0.5">
+        </div>
+        <div class="slider-field">
+          <div class="slider-label">
+            <span class="name"><span class="ent-label">Ent</span> Avg Hrs/User</span>
+            <input type="number" class="val" id="entAgentVal" value="18" min="0" max="60" step="0.5">
+          </div>
+          <div class="slider-hint" id="entAgentHint">Included: 18 hrs · $3/hr overage</div>
+          <input type="range" class="ent-slider" id="entAgentHours" min="0" max="60" value="18" step="0.5">
+        </div>
+        <div class="slider-field">
+          <div class="slider-label">
+            <span class="name"><span class="ext-label">Ent+</span> Avg Hrs/User</span>
+            <input type="number" class="val" id="extAgentVal" value="30" min="0" max="100" step="0.5">
+          </div>
+          <div class="slider-hint" id="extAgentHint">18 included + extra at $3/hr</div>
+          <input type="range" class="ext-slider" id="extAgentHours" min="0" max="100" value="30" step="0.5">
+        </div>
+      </div>
+
+      <!-- Storage: auto-calculated included + extra -->
+      <div class="slider-group-2">
+        <div class="slider-field">
+          <div class="slider-label">
+            <span class="name">Included Storage (auto)</span>
+            <input type="text" class="val" id="inclStorageVal" value="2500" readonly style="background:#e6f7ee;color:var(--green);border-color:#b7e4c7;cursor:default;">
+          </div>
+          <div class="slider-hint" id="inclStorageHint">Pro 25 GB × 0 + Ent 50 GB × 50 = 2,500 GB</div>
+        </div>
+        <div class="slider-field">
+          <div class="slider-label">
+            <span class="name">Extra Storage Needed (GB)</span>
+            <input type="number" class="val" id="extraStorageVal" value="0" min="0" max="50000" step="10">
+          </div>
+          <div class="slider-hint" id="extraStorageHint">$5/GB/month beyond included pooled allocation</div>
+          <input type="range" id="extraStorageGB" min="0" max="50000" value="0" step="10">
+        </div>
+      </div>
+    </div>
+
+    <!-- Bar -->
+    <div class="bar-container">
+      <div class="bar-fill under" id="barFill" style="width:50%;">50%</div>
+    </div>
+    <div class="bar-labels"><span>$0</span><span id="barBudgetLabel">Budget: $5,000</span></div>
+
+    <!-- Breakdown -->
+    <div class="breakdown">
+      <h3>Cost Breakdown</h3>
+      <table>
+        <thead><tr><th>Line Item</th><th>Detail</th><th class="r">Cost</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p class="note" id="notes"></p>
+  </section>
+</div>
+
+<footer>
+  Pricing sourced from <a href="https://aws.amazon.com/quick/pricing/" target="_blank">aws.amazon.com/quick/pricing</a> (Sep 2026).
+  Unofficial estimate — always verify with the official AWS pricing page.
+</footer>
+
+<script>
+// ====================================================================
+// STATIC PRICING DATA (JSON) — single source of truth
+// ====================================================================
+const PRICING = {
+  professional: {
+    name: "Professional",
+    pricePerUser: 20,
+    includedAgentHoursPerUser: 8,
+    indexStoragePerUserGB: 25,
+    infrastructureFee: 250,
+    allowsOverage: false
+  },
+  enterprise: {
+    name: "Enterprise",
+    pricePerUser: 40,
+    includedAgentHoursPerUser: 18,
+    indexStoragePerUserGB: 50,
+    infrastructureFee: 250,
+    allowsOverage: true
+  },
+  // "Ent+" is the SAME Enterprise license, just modeled separately
+  // for users expected to consume extra agent hours beyond 18 hrs.
+  enterprisePlus: {
+    name: "Ent + Extra Hours",
+    pricePerUser: 40,               // same Enterprise seat price
+    includedAgentHoursPerUser: 18,   // same 18 hrs included
+    indexStoragePerUserGB: 50,       // same 50 GB
+    infrastructureFee: 0,            // already counted once
+    allowsOverage: true
+  },
+  overages: {
+    agentHourRate: 3,   // $3/agent hr
+    storageRate: 5      // $5/GB/month
+  }
+};
+
+// ====================================================================
+// FORMULA:
+//   proSeatCost  = proSeats × $20
+//   entSeatCost  = (entSeats + extSeats) × $40
+//   infraFee     = $250 flat (if any seats > 0)
+//
+//   inclStorage  = proSeats×25 + (entSeats+extSeats)×50
+//   storOverCost = max(0, requestedGB - inclStorage) × $5
+//
+//   proAgent: proSeats×proAvg → capped at proSeats×8, no overage
+//   entAgent: entSeats×entAvg → overage = max(0, total - entSeats×18) × $3
+//   extAgent: extSeats×extAvg → overage = max(0, total - extSeats×18) × $3
+//
+//   TOTAL = proSeatCost + entSeatCost + infraFee + storOverCost
+//           + entAgentOverCost + extAgentOverCost
+// ====================================================================
+
+const $ = id => document.getElementById(id);
+const fmtD = n => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtI = n => n.toLocaleString();
+const gv = id => parseFloat($(id).value) || 0;
+
+function calculate() {
+  const pro = PRICING.professional;
+  const ent = PRICING.enterprise;
+  const ext = PRICING.enterprisePlus;
+  const ov  = PRICING.overages;
+
+  const proSeats = Math.round(gv("proSeats"));
+  const entSeats = Math.round(gv("entSeats"));
+  const extSeats = Math.round(gv("extSeats"));
+  const allEntSeats = entSeats + extSeats;
+  const totalSeats = proSeats + allEntSeats;
+
+  const proAvg = gv("proAgentHours");
+  const entAvg = gv("entAgentHours");
+  const extAvg = gv("extAgentHours");
+  const storageGB = Math.round(gv("extraStorageGB"));
+  const budget = gv("budget");
+
+  // Seats
+  const proSeatCost = proSeats * pro.pricePerUser;
+  const entSeatCost = allEntSeats * ent.pricePerUser; // Ent + Ent+ are same price
+  const infraFee = totalSeats > 0 ? 250 : 0;
+
+  // Storage — included is auto-calculated from seats
+  const proInclStor = proSeats * pro.indexStoragePerUserGB;
+  const entInclStor = allEntSeats * ent.indexStoragePerUserGB;
+  const totalInclStor = proInclStor + entInclStor;
+  const extraStorage = storageGB;
+  const storOverCost = extraStorage * ov.storageRate;
+
+  // Agent hours — Pro (capped)
+  const proInclAgent = proSeats * pro.includedAgentHoursPerUser;
+  const proTotalAgent = proSeats * proAvg;
+  const proOverAgent = Math.max(0, proTotalAgent - proInclAgent);
+
+  // Agent hours — Ent (standard)
+  const entInclAgent = entSeats * ent.includedAgentHoursPerUser;
+  const entTotalAgent = entSeats * entAvg;
+  const entOverAgent = Math.max(0, entTotalAgent - entInclAgent);
+  const entAgentCost = entOverAgent * ov.agentHourRate;
+
+  // Agent hours — Ent+ (extra)
+  const extInclAgent = extSeats * ext.includedAgentHoursPerUser;
+  const extTotalAgent = extSeats * extAvg;
+  const extOverAgent = Math.max(0, extTotalAgent - extInclAgent);
+  const extAgentCost = extOverAgent * ov.agentHourRate;
+
+  const total = proSeatCost + entSeatCost + infraFee + storOverCost + entAgentCost + extAgentCost;
+
+  // ---- Update displays (skip focused input to not fight user typing) ----
+  const focused = document.activeElement;
+  if (focused !== $("proSeatsVal"))  $("proSeatsVal").value = proSeats;
+  if (focused !== $("entSeatsVal"))  $("entSeatsVal").value = entSeats;
+  if (focused !== $("extSeatsVal"))  $("extSeatsVal").value = extSeats;
+  $("totalSeatsVal").textContent = fmtI(totalSeats);
+  $("totalEntSeatsLabel").textContent = `${fmtI(allEntSeats)} Enterprise total`;
+  if (focused !== $("proAgentVal"))  $("proAgentVal").value = proAvg;
+  if (focused !== $("entAgentVal"))  $("entAgentVal").value = entAvg;
+  if (focused !== $("extAgentVal"))  $("extAgentVal").value = extAvg;
+  if (focused !== $("extraStorageVal")) $("extraStorageVal").value = extraStorage;
+
+  // Auto-calculated included storage display
+  $("inclStorageVal").value = fmtI(totalInclStor);
+  $("inclStorageHint").textContent = `Pro ${pro.indexStoragePerUserGB} GB × ${fmtI(proSeats)} + Ent ${ent.indexStoragePerUserGB} GB × ${fmtI(allEntSeats)} = ${fmtI(totalInclStor)} GB`;
+  $("extraStorageHint").textContent = extraStorage > 0
+    ? `${fmtI(extraStorage)} GB × $${ov.storageRate}/GB/mo = $${fmtD(storOverCost)}/mo`
+    : "$5/GB/month beyond included pooled allocation";
+
+  $("proAgentHint").textContent = `${fmtI(proSeats)}×${proAvg}=${fmtD(proTotalAgent)} hrs · Included: ${fmtI(proInclAgent)} hrs · No overage`;
+  $("entAgentHint").textContent = `${fmtI(entSeats)}×${entAvg}=${fmtD(entTotalAgent)} hrs · Included: ${fmtI(entInclAgent)} hrs`;
+  $("extAgentHint").textContent = `${fmtI(extSeats)}×${extAvg}=${fmtD(extTotalAgent)} hrs · 18 incl + ${fmtD(extOverAgent)} extra`;
+
+  // ---- Breakdown ----
+  const tbody = $("tbody");
+  const rw = (item, detail, cost) => `<tr><td>${item}</td><td>${detail}</td><td class="r">${cost}</td></tr>`;
+  let html = "";
+
+  if (proSeats > 0) {
+    html += rw('<span class="pro-label">Pro</span> Subscriptions', `${fmtI(proSeats)} × $${pro.pricePerUser}/mo`, `$${fmtD(proSeatCost)}`);
+    html += rw('<span class="pro-label">Pro</span> Agent Hours', `${fmtI(proInclAgent)} hrs included` + (proOverAgent > 0 ? ` · ⚠️ ${fmtD(proOverAgent)} hrs over (capped)` : ""), '<span style="color:var(--green)">Included</span>');
+    html += rw('<span class="pro-label">Pro</span> Storage', `${fmtI(proSeats)} × ${pro.indexStoragePerUserGB} GB = ${fmtI(proInclStor)} GB`, '<span style="color:var(--green)">Included</span>');
+  }
+
+  if (entSeats > 0) {
+    html += rw('<span class="ent-label">Ent</span> Subscriptions', `${fmtI(entSeats)} × $${ent.pricePerUser}/mo`, `$${fmtD(entSeats * ent.pricePerUser)}`);
+    html += rw('<span class="ent-label">Ent</span> Agent Hours', `${fmtI(entInclAgent)} hrs included` + (entOverAgent > 0 ? ` + ${fmtD(entOverAgent)} overage` : ""), entOverAgent > 0 ? `$${fmtD(entAgentCost)}` : '<span style="color:var(--green)">Included</span>');
+    html += rw('<span class="ent-label">Ent</span> Storage', `${fmtI(entSeats)} × ${ent.indexStoragePerUserGB} GB = ${fmtI(entSeats * ent.indexStoragePerUserGB)} GB`, '<span style="color:var(--green)">Included</span>');
+  }
+
+  if (extSeats > 0) {
+    html += rw('<span class="ext-label">Ent+</span> Subscriptions', `${fmtI(extSeats)} × $${ext.pricePerUser}/mo`, `$${fmtD(extSeats * ext.pricePerUser)}`);
+    html += rw('<span class="ext-label">Ent+</span> Agent Hours', `${fmtI(extInclAgent)} hrs included + ${fmtD(extOverAgent)} hrs extra × $${ov.agentHourRate}/hr`, extOverAgent > 0 ? `$${fmtD(extAgentCost)}` : '<span style="color:var(--green)">Included</span>');
+    html += rw('<span class="ext-label">Ent+</span> Storage', `${fmtI(extSeats)} × ${ext.indexStoragePerUserGB} GB = ${fmtI(extSeats * ext.indexStoragePerUserGB)} GB`, '<span style="color:var(--green)">Included</span>');
+  }
+
+  if (infraFee > 0) html += rw('Infrastructure Fee', 'Flat $250/account/month', `$${fmtD(infraFee)}`);
+
+  html += rw('Pooled Storage (included)', `${fmtI(totalInclStor)} GB (auto-calculated from seats)`, '<span style="color:var(--green)">Included</span>');
+  if (extraStorage > 0)
+    html += rw('Extra Storage', `${fmtI(extraStorage)} GB × $${ov.storageRate}/GB/mo`, `$${fmtD(storOverCost)}`);
+
+  html += `<tr class="total"><td colspan="2">Estimated Monthly Total</td><td class="r">$${fmtD(total)}</td></tr>`;
+  tbody.innerHTML = html;
+
+  // Budget status
+  const diff = budget - total;
+  const st = $("budgetStatus");
+  if (Math.abs(diff) < 1) { st.textContent = "✓ On budget"; st.className = "budget-status exact"; }
+  else if (diff > 0) { st.textContent = `✓ $${fmtD(diff)} under`; st.className = "budget-status under"; }
+  else { st.textContent = `⚠ $${fmtD(-diff)} over`; st.className = "budget-status over"; }
+
+  const pct = budget > 0 ? Math.min((total / budget) * 100, 120) : 0;
+  const bar = $("barFill");
+  bar.style.width = Math.min(pct, 100) + "%";
+  bar.textContent = `$${fmtD(total)} (${Math.round(pct)}%)`;
+  bar.className = "bar-fill " + (Math.abs(diff) < 1 ? "exact" : diff > 0 ? "under" : "over");
+  $("barBudgetLabel").textContent = `Budget: $${fmtD(budget)}`;
+
+  // Notes
+  const notes = [];
+  if (proOverAgent > 0) notes.push(`⚠️ Pro capped at ${pro.includedAgentHoursPerUser} hrs/user — ${fmtD(proOverAgent)} hrs will be limited.`);
+  notes.push("Ent and Ent+ are the same Enterprise license. Ent+ is a modeling group for power users who need extra agent hours.");
+  notes.push("Agent hours metered per second. $3/hr overage applies to Enterprise only.");
+  notes.push("Infrastructure fee is one flat $250/account/month.");
+  $("notes").innerHTML = notes.join("<br>");
+}
+
+// Pairs: [slider ID, input box ID]
+const pairs = [
+  ["proSeats", "proSeatsVal"],
+  ["entSeats", "entSeatsVal"],
+  ["extSeats", "extSeatsVal"],
+  ["proAgentHours", "proAgentVal"],
+  ["entAgentHours", "entAgentVal"],
+  ["extAgentHours", "extAgentVal"],
+  ["extraStorageGB", "extraStorageVal"],
+];
+
+// Two-way sync: slider → input box, input box → slider
+pairs.forEach(([sliderId, inputId]) => {
+  $(sliderId).addEventListener("input", () => {
+    $(inputId).value = $(sliderId).value;
+    calculate();
+  });
+  $(inputId).addEventListener("input", () => {
+    const v = $(inputId).value === "" ? 0 : parseFloat($(inputId).value) || 0;
+    $(sliderId).value = v;
+    calculate();
+  });
+});
+
+// Budget only has an input box
+$("budget").addEventListener("input", calculate);
+
+calculate();
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Agent / tooling artifacts
+.playwright-mcp/
+.kiro/
+
+# Logs and temp files
+*.log
+*.tmp
+tmp/
+
+# Local env / secrets — never commit these
+.env
+.env.*
+*.pem
+*.key
+credentials
